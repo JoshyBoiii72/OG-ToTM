@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTM Tracker</title>
+<style>
+body{font-family:Arial,sans-serif;background:#313338;color:#fff;margin:0;padding:20px}
+.container{max-width:1100px;margin:auto}
+.card{background:#2b2d31;padding:15px;border-radius:12px;margin:15px 0}
+input,select,button{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none}
+button{background:#5865F2;color:#fff;font-weight:bold}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #444;padding:8px;text-align:center}
+.podium{display:flex;gap:10px}
+.podium div{flex:1;background:#1e1f22;padding:10px;border-radius:10px;text-align:center}
+.small{font-size:12px;color:#bbb}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🏆 TOTM Leaderboard</h1>
+
+<div class="podium">
+<div id="p2">🥈<br>No one</div>
+<div id="p1">🥇<br>No one</div>
+<div id="p3">🥉<br>No one</div>
+</div>
+
+<div class="card">
+<h2>Leaderboard</h2>
+<table>
+<thead><tr><th>Rank</th><th>Player</th><th>Points</th><th>Total Time</th><th>TOTW Times</th></tr></thead>
+<tbody id="board"></tbody>
+</table>
+<p class="small">Last updated: <span id="updated">Never</span></p>
+</div>
+
+<div class="card">
+<h2>🔒 Admin Login</h2>
+<input type="password" id="pw" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="card" id="admin" style="display:none">
+<h2>Admin Panel</h2>
+<input id="name" placeholder="Discord Username">
+<select id="totw">
+<option>1</option><option>2</option><option>3</option>
+<option>4</option><option>5</option><option>6</option><option>7</option>
+</select>
+<input id="time" placeholder="MM:SS">
+<button onclick="add()">Add/Update Result</button>
+<button onclick="exportData()">Export Backup</button>
+<button onclick="resetAll()">Reset Month</button>
+</div>
+</div>
+
+<script>
+const PASS="TOTMJUNE2026";
+let data=JSON.parse(localStorage.getItem("totmData")||"{}");
+
+function login(){
+ if(document.getElementById('pw').value===PASS){
+   document.getElementById('admin').style.display='block';
+   alert("Logged in!");
+ } else alert("Wrong password");
+}
+
+function toSec(t){
+ if(!t) return 0;
+ let p=t.split(":"); return (+p[0])*60 + (+p[1]);
+}
+
+function add(){
+ let n=name.value.trim(), tw=totw.value, t=time.value.trim();
+ if(!n) return alert("Enter player");
+ if(!data[n]) data[n]={times:{}};
+ data[n].times[tw]=t;
+ save();
+ name.value=""; time.value="";
+}
+
+function save(){
+ localStorage.setItem("totmData",JSON.stringify(data));
+ document.getElementById("updated").textContent=new Date().toLocaleString();
+ render();
+}
+
+function render(){
+ let arr=Object.entries(data).map(([n,v])=>{
+   let times=Object.values(v.times).filter(Boolean);
+   let pts=times.length;
+   let total=times.reduce((a,b)=>a+toSec(b),0);
+   return {n,pts,total,times:v.times};
+ }).sort((a,b)=> b.pts-a.pts || a.total-b.total);
+
+ board.innerHTML="";
+ arr.forEach((p,i)=>{
+   let tt=Math.floor(p.total/60)+":"+String(p.total%60).padStart(2,"0");
+   board.innerHTML += `<tr>
+   <td>${i+1}</td><td>${p.n}</td><td>${p.pts}</td>
+   <td>${tt}</td>
+   <td>${Object.entries(p.times).map(x=>`T${x[0]}:${x[1]}`).join(", ")}</td>
+   </tr>`;
+ });
+
+ p1.innerHTML="🥇<br>"+(arr[0]?.n||"No one");
+ p2.innerHTML="🥈<br>"+(arr[1]?.n||"No one");
+ p3.innerHTML="🥉<br>"+(arr[2]?.n||"No one");
+}
+
+function exportData(){
+ let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="totm_backup.json";
+ a.click();
+}
+
+function resetAll(){
+ if(confirm("Reset entire month?")){
+   data={}; save();
+ }
+}
+
+render();
+</script>
+</body>
+</html>
